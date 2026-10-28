@@ -1,4 +1,5 @@
 import re, requests, streamlit as st
+from urllib.parse import unquote
 
 st.title("👍 채널 좋아요 TOP 5")
 B = "https://www.googleapis.com/youtube/v3/"
@@ -15,10 +16,27 @@ def api(p, **q):
     if "error" in d: raise Exception(d["error"]["message"])
     return d
 
+def find_channel(u):
+    u = unquote(u.strip())
+    m = re.search(r"@[^/?#\s]+", u)
+    if m: return {"forHandle": m.group()}
+    m = re.search(r"channel/(UC[\w-]+)", u)
+    if m: return {"id": m.group(1)}
+    m = re.search(r"user/([^/?#\s]+)", u)
+    if m: return {"forUsername": m.group(1)}
+    m = re.search(r"/c/([^/?#\s]+)", u)
+    if m:
+        s = api("search", part="snippet", q=m.group(1), type="channel", maxResults=1)
+        return {"id": s["items"][0]["snippet"]["channelId"]}
+    raise Exception("채널 주소가 아니에요. 채널 페이지의 주소를 넣어주세요.")
+
 if st.button("찾기"):
     try:
-        h = re.search(r"@[^/?#\s]+", url).group()
-        up = api("channels", part="contentDetails", forHandle=h)["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
+        ch = api("channels", part="snippet,contentDetails", **find_channel(url))
+        if not ch.get("items"):
+            raise Exception("채널을 찾지 못했어요.")
+        st.subheader(ch["items"][0]["snippet"]["title"])
+        up = ch["items"][0]["contentDetails"]["relatedPlaylists"]["uploads"]
         ids, t = [], None
         while True:
             d = api("playlistItems", part="contentDetails", playlistId=up, maxResults=50, **({"pageToken": t} if t else {}))
