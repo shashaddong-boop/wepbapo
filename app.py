@@ -1,9 +1,14 @@
 import re, requests, streamlit as st
 
 st.title("👍 채널 좋아요 TOP 5")
-key = st.text_input("API 키", type="password")
-url = st.text_input("채널 주소 (예: https://www.youtube.com/@채널핸들)")
 B = "https://www.googleapis.com/youtube/v3/"
+
+if "YT_KEY" not in st.secrets:
+    st.error("Secrets에 YT_KEY가 없어요.")
+    st.stop()
+key = st.secrets["YT_KEY"]
+
+url = st.text_input("채널 주소 (예: https://www.youtube.com/@채널핸들)")
 
 def api(p, **q):
     d = requests.get(B + p, params={**q, "key": key}).json()
